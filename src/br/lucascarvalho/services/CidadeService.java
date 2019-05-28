@@ -164,7 +164,7 @@ public class CidadeService {
 		if (node == null)
 			return null;
 		
-		String idIBGE = node.has("ibge_id") ? node.get("ibge_id").toString() : "";
+		String idIBGE = node.has("ibge_id") ? node.get("ibge_id").textValue() : "";
 		
 		String retorno = null;
 		Cidade cidade = BancoDeDados.listaCidades.stream().filter(c -> c.getIdIbge().equals(idIBGE)).findAny()
@@ -190,19 +190,29 @@ public class CidadeService {
 	 * @param uf sigla do estado
 	 * @return arquivo JSON com a lista de cidades
 	 */
-	// TODO: Corrigir parametro para JSON
-	public String getlistaCidadesPorEstado(String uf) {
-		System.out.println("a");
+	public String getlistaCidadesPorEstado(String json) {
+		ObjectNode node = null;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			node = mapper.readValue(json, ObjectNode.class);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (node == null)
+			return null;
+		
+		String uf = node.has("uf") ? node.get("uf").textValue() : "";
+		
 		List<String> cidades = BancoDeDados.listaCidades.stream().filter(c -> c.getUf().getSigla().equals(uf))
 				.map(Cidade::getNome).collect(Collectors.toList());
 
-		ObjectMapper mapper = new ObjectMapper();
 		ArrayNode arrayNode = mapper.createArrayNode();
-		ObjectNode node = mapper.createObjectNode();
+		ObjectNode nodeRetorno = mapper.createObjectNode();
 		cidades.forEach(c -> arrayNode.add(c));
-		node.set("cidades", arrayNode);
+		nodeRetorno.set("cidades", arrayNode);
 
-		return node.toString();
+		return nodeRetorno.toString();
 	}
 
 	@PUT
@@ -215,7 +225,7 @@ public class CidadeService {
 	 * 
 	 * @param cidadeJson arquivo JSON com os dados da cidade
 	 */
-	public void inserirCidade(String cidadeJson) {
+	public String inserirCidade(String cidadeJson) {
 		ObjectMapper mapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule();
 		module.addDeserializer(Cidade.class, new CidadeDeserializer());
@@ -228,45 +238,107 @@ public class CidadeService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
+		
 		BancoDeDados.listaCidades.add(novaCidade);
+		ObjectNode retorno = mapper.createObjectNode();
+		retorno.put("status", "Cidade criada com sucesso!");
+		return retorno.toString();
 	}
 
-	// TODO: Verificar path de eventos DELETE/PUT
 	@DELETE
 	@Path("/remover-cidade")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * 
+	 * Método responsável por remover uma cidade da lista, dado o seu identificador
 	 * @param idIBGE código identificador da cidade
 	 */
-	public void removerCidade(String idIBGE) {
+	public String removerCidade(String json) {
+		ObjectNode node = null;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			node = mapper.readValue(json, ObjectNode.class);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (node == null)
+			return null;
+		
+		String idIBGE = node.has("ibge_id") ? node.get("ibge_id").textValue() : "";
+		
 		BancoDeDados.listaCidades.removeIf(c -> c.getIdIbge().equals(idIBGE));
+		
+		ObjectNode retorno = mapper.createObjectNode();
+		retorno.put("status", "Cidade removida com sucesso!");
+		return retorno.toString();
 	}
 
+	@GET
+	@Path("/busca-por-coluna")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Permitir selecionar uma coluna (do CSV) e através dela entrar com uma string
-	 * para filtrar. retornar assim todos os objetos que contenham tal string;
+	 * Método responsável por permitir uma consulta em uma coluna desejada, através de um filtro.
+	 * Esse método utiliza-se de conceitos de Java Reflection.
 	 * 
-	 * @param coluna
-	 * @param filtro
+	 * @param json arquivo JSON contendo a coluna e filtro
 	 */
-	public void buscarPorColuna(String coluna, String filtro) {
-		// TODO: Documentar ...
+	public String buscarPorColuna(String json) {
+		ObjectNode node = null;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			node = mapper.readValue(json, ObjectNode.class);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (node == null)
+			return null;
+		
+		String coluna = node.has("coluna") ? node.get("coluna").textValue() : "";
+		String filtro = node.has("filtro") ? node.get("filtro").textValue() : "";
+		
+		// Inicia uma instância da classe Cidade
 		Cidade cidadeFoo = new Cidade();
+
+		// Busca todos os campos que a classe cidade possuí
 		Field[] fields = cidadeFoo.getClass().getDeclaredFields();
-		final Method methodFinal = null;
 		List<Cidade> listaBusca = null;
+		
+		/*
+		 *  A lógica a seguir é a responsável por relacionar a coluna informada por parâmetro com o campo da classe Cidade.
+		 *  Isso é possível devido as anotações criadas ao definir cada atributo da classe Cidade. Portanto, é necessário
+		 *  que a coluna informada como parâmetro seja idêntica a coluna existente no arquivo cidades.csv
+		 */
 		for (Field f : fields) {
+			// Encontra a propriedade Json definida para o campo
 			JsonProperty jsonProperty = f.getDeclaredAnnotation(JsonProperty.class);
+			
+			// Caso a propriedade não seja nula e seja igual a coluna informada por parâmetro, prossegue
 			if (jsonProperty != null && jsonProperty.value().equals(coluna)) {
+				
+				/*
+				 * O trecho a seguir busca todos os métodos existentes na classe Cidade para encontrar o método
+				 * do estilo get para o campo necessário. Essa lógica leva em consideração que os padrões de nomenclatura
+				 * forma utilizados durante a definição da classe Cidade. Por exemplo:
+				 * - Para o campo foo foi criado o método getFoo.
+				 * 
+				 * A única exceção a essa regra é o campo capital, que teve a nomenclatura do seu método get modificada para isCapital.
+				 */
 				Method[] allMethods = cidadeFoo.getClass().getDeclaredMethods();
 				for (Method method : allMethods) {
+
+					// Caso o método encontrado iniciar com get ou is e terminar com o nome do campo desejado, continua.
 					if ((method.getName().toLowerCase().startsWith("get")
 							|| method.getName().toLowerCase().startsWith("is"))
 							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
 						listaBusca = BancoDeDados.listaCidades.stream().filter(c -> {
+
+							/*
+							 * O trecho a seguir é responsável por identificar as comparações necessárias para cada tipo de campo.
+							 * A classe cidade possui basicamente os tipos String, boolean e float.
+							 */
 							try {
 								if (method.getGenericReturnType() == boolean.class) {
 									return (boolean) method.invoke(c, null) == filtro.equals("true");
@@ -288,32 +360,58 @@ public class CidadeService {
 			}
 		}
 
-		// TODO: retorno
-		if (listaBusca != null)
-			listaBusca.forEach(c -> System.out.println(c));
-
+		String retorno = null;
+		try {
+			retorno = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(listaBusca);
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+		return retorno;
 	}
 
+	@GET
+	@Path("/nr-registros-por-coluna")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Retornar a quantidade de registro baseado em uma coluna. Não deve contar
-	 * itens iguais
+	 * Método responsável por retornar o número de registros em um coluna desconsiderando itens repetidos
 	 * 
-	 * @param coluna
+	 * @param json arquivo JSON contendo a coluna que será utilizada na busca
 	 */
-	public void nrRegistrosPorColuna(String coluna) {
-		// TODO: Documentar
+	public String nrRegistrosPorColuna(String json) {
+		ObjectNode node = null;
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			node = mapper.readValue(json, ObjectNode.class);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (node == null)
+			return null;
+		
+		String coluna = node.has("coluna") ? node.get("coluna").textValue() : "";
+		
+		/*
+		 * A lógica utilizada nesse trecho de código é semelhante ao método buscarPorColuna(), porém nesse é realizado um 
+		 * predicado para contar o número de registros únicos identificados
+		 */
 		Cidade cidadeFoo = new Cidade();
 		Field[] fields = cidadeFoo.getClass().getDeclaredFields();
-		final Method methodFinal = null;
 		long numeroRegistros = 0;
 		for (Field f : fields) {
+			
 			JsonProperty jsonProperty = f.getDeclaredAnnotation(JsonProperty.class);
+			
 			if (jsonProperty != null && jsonProperty.value().equals(coluna)) {
+				
 				Method[] allMethods = cidadeFoo.getClass().getDeclaredMethods();
 				for (Method method : allMethods) {
+					
 					if ((method.getName().toLowerCase().startsWith("get")
 							|| method.getName().toLowerCase().startsWith("is"))
 							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
+						
 						numeroRegistros = BancoDeDados.listaCidades.stream().filter(distinctByKey(c -> {
 							try {
 								return method.invoke(c, null);
@@ -327,24 +425,32 @@ public class CidadeService {
 				}
 			}
 		}
-
-		System.out.println(numeroRegistros);
-		// TODO: retorno
+		
+		ObjectNode retorno = mapper.createObjectNode();
+		retorno.put("nr_registros", numeroRegistros);
+		
+		return retorno.toString();
 	}
 
-	// TODO: Implementar local para predicado
 	public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
 		Map<Object, Boolean> seen = new ConcurrentHashMap<>();
 		return t -> seen.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
 	}
 
+	@GET
+	@Path("/nr-total-registros")
+	@Produces(MediaType.APPLICATION_JSON)
 	/**
 	 * Método responsável por retornar a quantidade total de registros na lista
 	 * 
 	 * @return arquivo JSON com o número de registros na lista
 	 */
-	public int nrTotalRegistros() {
-		return BancoDeDados.listaCidades.size();
+	public String nrTotalRegistros() {
+		ObjectMapper mapper = new ObjectMapper();
+		ObjectNode retorno = mapper.createObjectNode();
+		retorno.put("nr_registros", BancoDeDados.listaCidades.size());
+		
+		return retorno.toString();
 	}
 
 	/**
