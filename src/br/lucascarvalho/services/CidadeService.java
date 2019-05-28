@@ -49,7 +49,11 @@ public class CidadeService {
 	 */
 	public String carregarArquivo() {
 		BancoDeDados.listaCidades = CSVUtils.readlistaCidadesFromCSV("cidades.csv");
-		return "Arquivo carregado com sucesso!";
+
+		ObjectMapper mapper = new ObjectMapper();
+		ObjectNode retorno = mapper.createObjectNode();
+		retorno.put("status", "Arquivo carregado com sucesso!");
+		return retorno.toString();
 	}
 
 	@GET
@@ -66,16 +70,14 @@ public class CidadeService {
 				.sorted((c1, c2) -> c1.getNome().compareTo(c2.getNome())).collect(Collectors.toList());
 
 		ObjectMapper mapper = new ObjectMapper();
+		ObjectNode retorno = mapper.createObjectNode();
 
-		// TODO: Corrigir JSON de retorno, a estrutura não está correta
-		return capitais.stream().map(c1 -> {
-			try {
-				return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(c1);
-			} catch (JsonProcessingException e) {
-				e.printStackTrace();
-			}
-			return null;
-		}).collect(Collectors.joining());
+		try {
+			retorno.putPOJO("capitais", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(capitais));
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+		return retorno.toString();
 	}
 
 	@GET
@@ -97,7 +99,6 @@ public class CidadeService {
 		Optional<Entry<Estado, Long>> menorEstado = estadosAgrupados.entrySet().stream()
 				.min(Comparator.comparing(Map.Entry::getValue));
 
-		// TODO: verificar a possibilidade de criar ObjectNodeUtil
 		ObjectMapper mapper = new ObjectMapper();
 		ArrayNode arrayNode = mapper.createArrayNode();
 
@@ -129,7 +130,7 @@ public class CidadeService {
 
 		ObjectMapper mapper = new ObjectMapper();
 		ArrayNode arrayNode = mapper.createArrayNode();
-
+		
 		estadosAgrupados.forEach((estado, numerolistaCidades) -> {
 			ObjectNode objectEstado = mapper.createObjectNode();
 			objectEstado.put("estado", estado.getNome());
@@ -141,7 +142,8 @@ public class CidadeService {
 	}
 
 	@GET
-	@Path("/cidades-por-estado")
+	@Path("/cidades-por-id")
+	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
 	 * Método responsável por obter os dados de uma cidade a partir do seu id do
@@ -151,15 +153,25 @@ public class CidadeService {
 	 * @return arquivo JSON com os dados da cidade. Retorna null caso a cidade não
 	 *         foi encontrada
 	 */
-	// TODO: Corrigir parametro para JSON
-	public String getCidadeById(String idIBGE) {
-		String retorno = null;
-		Cidade cidade = BancoDeDados.listaCidades.stream().filter(c -> c.getIdIbge().equals(idIBGE)).findAny().orElse(null);
-
-		ObjectMapper mapper = new ObjectMapper();
-
+	public String getCidadeById(String json) {
+		ObjectNode node = null;
 		try {
-			retorno = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(cidade);
+			node = new ObjectMapper().readValue(json, ObjectNode.class);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		if (node == null)
+			return null;
+		
+		String idIBGE = node.has("ibge_id") ? node.get("ibge_id").toString() : "";
+		
+		String retorno = null;
+		Cidade cidade = BancoDeDados.listaCidades.stream().filter(c -> c.getIdIbge().equals(idIBGE)).findAny()
+				.orElse(null);
+		
+		try {
+			retorno = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(cidade);
 		} catch (JsonProcessingException e) {
 			e.printStackTrace();
 		}
@@ -180,8 +192,9 @@ public class CidadeService {
 	 */
 	// TODO: Corrigir parametro para JSON
 	public String getlistaCidadesPorEstado(String uf) {
-		List<String> cidades = BancoDeDados.listaCidades.stream().filter(c -> c.getUf().getSigla().equals(uf)).map(Cidade::getNome)
-				.collect(Collectors.toList());
+		System.out.println("a");
+		List<String> cidades = BancoDeDados.listaCidades.stream().filter(c -> c.getUf().getSigla().equals(uf))
+				.map(Cidade::getNome).collect(Collectors.toList());
 
 		ObjectMapper mapper = new ObjectMapper();
 		ArrayNode arrayNode = mapper.createArrayNode();
@@ -233,9 +246,9 @@ public class CidadeService {
 	}
 
 	/**
-	 *  Permitir selecionar uma coluna (do CSV) e através dela entrar com uma
-	 * string para filtrar. retornar assim todos os objetos que contenham tal
-	 * string;
+	 * Permitir selecionar uma coluna (do CSV) e através dela entrar com uma string
+	 * para filtrar. retornar assim todos os objetos que contenham tal string;
+	 * 
 	 * @param coluna
 	 * @param filtro
 	 */
@@ -284,6 +297,7 @@ public class CidadeService {
 	/**
 	 * Retornar a quantidade de registro baseado em uma coluna. Não deve contar
 	 * itens iguais
+	 * 
 	 * @param coluna
 	 */
 	public void nrRegistrosPorColuna(String coluna) {
@@ -326,18 +340,19 @@ public class CidadeService {
 
 	/**
 	 * Método responsável por retornar a quantidade total de registros na lista
+	 * 
 	 * @return arquivo JSON com o número de registros na lista
 	 */
 	public int nrTotalRegistros() {
 		return BancoDeDados.listaCidades.size();
 	}
-	
+
 	/**
-	 * Dentre todas as listaCidades, obter as duas listaCidades mais distantes
-	 * uma da outra com base na localização (distância em KM em linha reta);
+	 * Dentre todas as listaCidades, obter as duas listaCidades mais distantes uma
+	 * da outra com base na localização (distância em KM em linha reta);
 	 */
 	private void buscaCidadesMaisDistantes() {
-		//TODO: implementação
+		// TODO: implementação
 	}
 
 }
