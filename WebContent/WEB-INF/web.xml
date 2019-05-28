@@ -15,4 +15,8 @@
 		<servlet-name>javax.ws.rs.core.Application</servlet-name>
 		<url-pattern>/*</url-pattern>
 	</servlet-mapping>
+	
+	<listener>
+		<listener-class>br.lucascarvalho.services.StartupServlet</listener-class>
+	</listener>
 </web-app>

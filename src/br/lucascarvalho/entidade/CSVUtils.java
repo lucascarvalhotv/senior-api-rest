@@ -9,16 +9,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
-
-import br.lucascarvalho.services.Teste;
 
 public class CSVUtils {
 
 	public static List<Cidade> readlistaCidadesFromCSV(String fileName) {
 		List<Cidade> cidades = new ArrayList<>();
 		
-		ClassLoader cl = new Teste().getClass().getClassLoader();
+		ClassLoader cl = new CSVUtils().getClass().getClassLoader();
 		File file = new File(cl.getResource(fileName).getFile());
 
 		Path pathToFile = Paths.get(file.getAbsolutePath());

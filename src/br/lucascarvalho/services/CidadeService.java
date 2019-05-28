@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import br.lucascarvalho.entidade.BancoDeDados;
 import br.lucascarvalho.entidade.CSVUtils;
 import br.lucascarvalho.entidade.Cidade;
 import br.lucascarvalho.entidade.CidadeDeserializer;
@@ -36,14 +37,6 @@ import br.lucascarvalho.entidade.Estado;
 
 @Path("/cidades")
 public class CidadeService {
-
-	// TODO: Criar instancia única no start do server (é recarregado a cada
-	// requisição)
-	List<Cidade> listaCidades;
-
-	public CidadeService() {
-		carregarArquivo();
-	}
 
 	@PUT
 	@Path("/carregar-arquivo")
@@ -55,7 +48,7 @@ public class CidadeService {
 	 * @return arquivo JSON com resultado do processo
 	 */
 	public String carregarArquivo() {
-		listaCidades = CSVUtils.readlistaCidadesFromCSV("cidades.csv");
+		BancoDeDados.listaCidades = CSVUtils.readlistaCidadesFromCSV("cidades.csv");
 		return "Arquivo carregado com sucesso!";
 	}
 
@@ -69,7 +62,7 @@ public class CidadeService {
 	 * @return arquivo JSON com a lista das capitais
 	 */
 	public String getCapitais() {
-		List<Cidade> capitais = listaCidades.stream().filter(c -> c.isCapital())
+		List<Cidade> capitais = BancoDeDados.listaCidades.stream().filter(c -> c.isCapital())
 				.sorted((c1, c2) -> c1.getNome().compareTo(c2.getNome())).collect(Collectors.toList());
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -95,7 +88,7 @@ public class CidadeService {
 	 * @return arquivo JSON contendo o nome do estado e a quantidade de cidades
 	 */
 	public String getMaiorEMenorEstado() {
-		Map<Estado, Long> estadosAgrupados = listaCidades.stream()
+		Map<Estado, Long> estadosAgrupados = BancoDeDados.listaCidades.stream()
 				.collect(Collectors.groupingBy(Cidade::getUf, Collectors.counting()));
 
 		Optional<Entry<Estado, Long>> maiorEstado = estadosAgrupados.entrySet().stream()
@@ -128,10 +121,10 @@ public class CidadeService {
 	/**
 	 * Método responsável por calcular o número de cidades de cada estado
 	 * 
-	 * @return arquivo JSON contendo o número de cidades de cada estado
+	 * @return arquivo JSON contendo o número de cidades de cada estado m
 	 */
 	public String getlistaCidadesPorEstado() {
-		Map<Estado, Long> estadosAgrupados = listaCidades.stream()
+		Map<Estado, Long> estadosAgrupados = BancoDeDados.listaCidades.stream()
 				.collect(Collectors.groupingBy(Cidade::getUf, Collectors.counting()));
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -161,7 +154,7 @@ public class CidadeService {
 	// TODO: Corrigir parametro para JSON
 	public String getCidadeById(String idIBGE) {
 		String retorno = null;
-		Cidade cidade = listaCidades.stream().filter(c -> c.getIdIbge().equals(idIBGE)).findAny().orElse(null);
+		Cidade cidade = BancoDeDados.listaCidades.stream().filter(c -> c.getIdIbge().equals(idIBGE)).findAny().orElse(null);
 
 		ObjectMapper mapper = new ObjectMapper();
 
@@ -187,7 +180,7 @@ public class CidadeService {
 	 */
 	// TODO: Corrigir parametro para JSON
 	public String getlistaCidadesPorEstado(String uf) {
-		List<String> cidades = listaCidades.stream().filter(c -> c.getUf().getSigla().equals(uf)).map(Cidade::getNome)
+		List<String> cidades = BancoDeDados.listaCidades.stream().filter(c -> c.getUf().getSigla().equals(uf)).map(Cidade::getNome)
 				.collect(Collectors.toList());
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -223,7 +216,7 @@ public class CidadeService {
 			e.printStackTrace();
 		}
 
-		listaCidades.add(novaCidade);
+		BancoDeDados.listaCidades.add(novaCidade);
 	}
 
 	// TODO: Verificar path de eventos DELETE/PUT
@@ -236,7 +229,7 @@ public class CidadeService {
 	 * @param idIBGE código identificador da cidade
 	 */
 	public void removerCidade(String idIBGE) {
-		listaCidades.removeIf(c -> c.getIdIbge().equals(idIBGE));
+		BancoDeDados.listaCidades.removeIf(c -> c.getIdIbge().equals(idIBGE));
 	}
 
 	/**
@@ -260,7 +253,7 @@ public class CidadeService {
 					if ((method.getName().toLowerCase().startsWith("get")
 							|| method.getName().toLowerCase().startsWith("is"))
 							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
-						listaBusca = listaCidades.stream().filter(c -> {
+						listaBusca = BancoDeDados.listaCidades.stream().filter(c -> {
 							try {
 								if (method.getGenericReturnType() == boolean.class) {
 									return (boolean) method.invoke(c, null) == filtro.equals("true");
@@ -307,7 +300,7 @@ public class CidadeService {
 					if ((method.getName().toLowerCase().startsWith("get")
 							|| method.getName().toLowerCase().startsWith("is"))
 							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
-						numeroRegistros = listaCidades.stream().filter(distinctByKey(c -> {
+						numeroRegistros = BancoDeDados.listaCidades.stream().filter(distinctByKey(c -> {
 							try {
 								return method.invoke(c, null);
 							} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -336,7 +329,15 @@ public class CidadeService {
 	 * @return arquivo JSON com o número de registros na lista
 	 */
 	public int nrTotalRegistros() {
-		return listaCidades.size();
+		return BancoDeDados.listaCidades.size();
+	}
+	
+	/**
+	 * Dentre todas as listaCidades, obter as duas listaCidades mais distantes
+	 * uma da outra com base na localização (distância em KM em linha reta);
+	 */
+	private void buscaCidadesMaisDistantes() {
+		//TODO: implementação
 	}
 
 }
