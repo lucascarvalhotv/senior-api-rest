@@ -77,7 +77,7 @@ public class CidadeService {
 	@Path("/menor_maior_estado")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Esse método é responsável por encontrar os estados com maior e menor número de cidades
+	 * Método responsável por encontrar os estados com maior e menor número de cidades
 	 * @return arquivo JSON contendo o nome do estado e a quantidade de cidades
 	 */
 	public String getMaiorEMenorEstado() {
@@ -108,6 +108,29 @@ public class CidadeService {
 		return arrayNode.toString();
 	}
 	
-	
+	@GET
+	@Path("/cidades-por-estado")
+	@Produces(MediaType.APPLICATION_JSON)
+	/**
+	 * Método responsável por calcular o número de cidades de cada estado
+	 * @return arquivo JSON contendo o número de cidades de cada estado
+	 */
+	public String getlistaCidadesPorEstado() {
+		Map<Estado, Long> estadosAgrupados = listaCidades
+				.stream()
+				.collect(Collectors.groupingBy(Cidade::getUf, Collectors.counting()));
+
+		ObjectMapper mapper = new ObjectMapper();
+		ArrayNode arrayNode = mapper.createArrayNode();
+
+		estadosAgrupados.forEach((estado, numerolistaCidades) -> {
+			ObjectNode objectEstado = mapper.createObjectNode();
+			objectEstado.put("estado", estado.getNome());
+			objectEstado.put("nr_cidades", numerolistaCidades);
+			arrayNode.add(objectEstado);
+		});
+
+		return arrayNode.toString();
+	}
 
 }
