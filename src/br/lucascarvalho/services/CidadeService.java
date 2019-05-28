@@ -26,7 +26,8 @@ import br.lucascarvalho.entidade.Estado;
 @Path("/cidades")
 public class CidadeService {
 
-	// TODO: Criar instancia única no start do server (é recarregado a cada requisição)
+	// TODO: Criar instancia única no start do server (é recarregado a cada
+	// requisição)
 	List<Cidade> listaCidades;
 
 	public CidadeService() {
@@ -77,7 +78,9 @@ public class CidadeService {
 	@Path("/menor_maior_estado")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por encontrar os estados com maior e menor número de cidades
+	 * Método responsável por encontrar os estados com maior e menor número de
+	 * cidades
+	 * 
 	 * @return arquivo JSON contendo o nome do estado e a quantidade de cidades
 	 */
 	public String getMaiorEMenorEstado() {
@@ -107,17 +110,17 @@ public class CidadeService {
 
 		return arrayNode.toString();
 	}
-	
+
 	@GET
 	@Path("/cidades-por-estado")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
 	 * Método responsável por calcular o número de cidades de cada estado
+	 * 
 	 * @return arquivo JSON contendo o número de cidades de cada estado
 	 */
 	public String getlistaCidadesPorEstado() {
-		Map<Estado, Long> estadosAgrupados = listaCidades
-				.stream()
+		Map<Estado, Long> estadosAgrupados = listaCidades.stream()
 				.collect(Collectors.groupingBy(Cidade::getUf, Collectors.counting()));
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -131,6 +134,62 @@ public class CidadeService {
 		});
 
 		return arrayNode.toString();
+	}
+
+	@GET
+	@Path("/cidades-por-estado")
+	@Produces(MediaType.APPLICATION_JSON)
+	/**
+	 * Método responsável por obter os dados de uma cidade a partir do seu id do
+	 * IBGE
+	 * 
+	 * @param idIBGE código identificador da cidade
+	 * @return arquivo JSON com os dados da cidade. Retorna null caso a cidade não
+	 *         foi encontrada
+	 */
+	// TODO: Corrigir parametro para JSON
+	public String getCidadeById(String idIBGE) {
+		String retorno = null;
+		Cidade cidade = listaCidades
+				.stream()
+				.filter(c -> c.getIdIbge().equals(idIBGE))
+				.findAny()
+				.orElse(null);
+
+		ObjectMapper mapper = new ObjectMapper();
+
+		try {
+			retorno = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(cidade);
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}
+
+		return retorno;
+	}
+
+	@GET
+	@Path("/cidades-por-estado-id")
+	@Produces(MediaType.APPLICATION_JSON)
+	/**
+	 * Método responsável por encontrar as cidades de um estado especificado por parâmetro
+	 * @param uf sigla do estado
+	 * @return arquivo JSON com a lista de cidades
+	 */
+	// TODO: Corrigir parametro para JSON
+	public String getlistaCidadesPorEstado(String uf) {
+		List<String> cidades = listaCidades
+				.stream()
+				.filter(c -> c.getUf().getSigla().equals(uf))
+				.map(Cidade::getNome)
+				.collect(Collectors.toList());
+
+		ObjectMapper mapper = new ObjectMapper();
+		ArrayNode arrayNode = mapper.createArrayNode();
+		ObjectNode node = mapper.createObjectNode();
+		cidades.forEach(c -> arrayNode.add(c));
+		node.set("cidades", arrayNode);
+
+		return node.toString();
 	}
 
 }
