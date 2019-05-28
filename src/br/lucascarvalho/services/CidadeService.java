@@ -1,15 +1,19 @@
 package br.lucascarvalho.services;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import javax.annotation.Generated;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -18,6 +22,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -232,6 +237,106 @@ public class CidadeService {
 	 */
 	public void removerCidade(String idIBGE) {
 		listaCidades.removeIf(c -> c.getIdIbge().equals(idIBGE));
+	}
+
+	/**
+	 *  Permitir selecionar uma coluna (do CSV) e através dela entrar com uma
+	 * string para filtrar. retornar assim todos os objetos que contenham tal
+	 * string;
+	 * @param coluna
+	 * @param filtro
+	 */
+	public void buscarPorColuna(String coluna, String filtro) {
+		// TODO: Documentar ...
+		Cidade cidadeFoo = new Cidade();
+		Field[] fields = cidadeFoo.getClass().getDeclaredFields();
+		final Method methodFinal = null;
+		List<Cidade> listaBusca = null;
+		for (Field f : fields) {
+			JsonProperty jsonProperty = f.getDeclaredAnnotation(JsonProperty.class);
+			if (jsonProperty != null && jsonProperty.value().equals(coluna)) {
+				Method[] allMethods = cidadeFoo.getClass().getDeclaredMethods();
+				for (Method method : allMethods) {
+					if ((method.getName().toLowerCase().startsWith("get")
+							|| method.getName().toLowerCase().startsWith("is"))
+							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
+						listaBusca = listaCidades.stream().filter(c -> {
+							try {
+								if (method.getGenericReturnType() == boolean.class) {
+									return (boolean) method.invoke(c, null) == filtro.equals("true");
+								} else if (method.getGenericReturnType() == float.class) {
+									return (float) method.invoke(c, null) == Float.parseFloat(filtro);
+								} else if (method.getGenericReturnType() == String.class) {
+									return method.invoke(c, null).toString().contains(filtro);
+								} else
+									return false;
+
+							} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+								e.printStackTrace();
+								return false;
+							}
+						}).collect(Collectors.toList());
+
+					}
+				}
+			}
+		}
+
+		// TODO: retorno
+		if (listaBusca != null)
+			listaBusca.forEach(c -> System.out.println(c));
+
+	}
+
+	/**
+	 * Retornar a quantidade de registro baseado em uma coluna. Não deve contar
+	 * itens iguais
+	 * @param coluna
+	 */
+	public void nrRegistrosPorColuna(String coluna) {
+		// TODO: Documentar
+		Cidade cidadeFoo = new Cidade();
+		Field[] fields = cidadeFoo.getClass().getDeclaredFields();
+		final Method methodFinal = null;
+		long numeroRegistros = 0;
+		for (Field f : fields) {
+			JsonProperty jsonProperty = f.getDeclaredAnnotation(JsonProperty.class);
+			if (jsonProperty != null && jsonProperty.value().equals(coluna)) {
+				Method[] allMethods = cidadeFoo.getClass().getDeclaredMethods();
+				for (Method method : allMethods) {
+					if ((method.getName().toLowerCase().startsWith("get")
+							|| method.getName().toLowerCase().startsWith("is"))
+							&& method.getName().toLowerCase().endsWith(f.getName().toLowerCase())) {
+						numeroRegistros = listaCidades.stream().filter(distinctByKey(c -> {
+							try {
+								return method.invoke(c, null);
+							} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+								e.printStackTrace();
+								return false;
+							}
+						})).collect(Collectors.counting());
+
+					}
+				}
+			}
+		}
+
+		System.out.println(numeroRegistros);
+		// TODO: retorno
+	}
+
+	// TODO: Implementar local para predicado
+	public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+		Map<Object, Boolean> seen = new ConcurrentHashMap<>();
+		return t -> seen.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
+	}
+
+	/**
+	 * Método responsável por retornar a quantidade total de registros na lista
+	 * @return arquivo JSON com o número de registros na lista
+	 */
+	public int nrTotalRegistros() {
+		return listaCidades.size();
 	}
 
 }
