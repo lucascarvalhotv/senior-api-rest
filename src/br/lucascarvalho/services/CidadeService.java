@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Generated;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -43,7 +44,8 @@ public class CidadeService {
 	@Path("/carregar-arquivo")
 	@Produces(MediaType.TEXT_PLAIN)
 	/**
-	 * Método responsável por carregar o arquivo CSV das cidades para a lista de dados
+	 * Método responsável por carregar o arquivo CSV das cidades para a lista de
+	 * dados
 	 * 
 	 * @return arquivo JSON com resultado do processo
 	 */
@@ -56,7 +58,8 @@ public class CidadeService {
 	@Path("/buscar-capitais")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por retornar as cidades que são capitais, ordenadas por nome em ordem alfabética
+	 * Método responsável por retornar as cidades que são capitais, ordenadas por
+	 * nome em ordem alfabética
 	 * 
 	 * @return arquivo JSON com a lista das capitais
 	 */
@@ -81,7 +84,8 @@ public class CidadeService {
 	@Path("/menor_maior_estado")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por encontrar os estados com maior e menor número de cidades
+	 * Método responsável por encontrar os estados com maior e menor número de
+	 * cidades
 	 * 
 	 * @return arquivo JSON contendo o nome do estado e a quantidade de cidades
 	 */
@@ -142,7 +146,8 @@ public class CidadeService {
 	@Path("/cidades-por-estado")
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por obter os dados de uma cidade a partir do seu id do IBGE
+	 * Método responsável por obter os dados de uma cidade a partir do seu id do
+	 * IBGE
 	 * 
 	 * @param idIBGE código identificador da cidade
 	 * @return arquivo JSON com os dados da cidade. Retorna null caso a cidade não
@@ -169,7 +174,8 @@ public class CidadeService {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por encontrar as cidades de um estado especificado por parâmetro
+	 * Método responsável por encontrar as cidades de um estado especificado por
+	 * parâmetro
 	 * 
 	 * @param uf sigla do estado
 	 * @return arquivo JSON com a lista de cidades
@@ -193,7 +199,9 @@ public class CidadeService {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	/**
-	 * Método responsável por inserir uma nova cidade, recebendo um arquivo JSON com os dados da cidade
+	 * Método responsável por inserir uma nova cidade, recebendo um arquivo JSON com
+	 * os dados da cidade
+	 * 
 	 * @param cidadeJson arquivo JSON com os dados da cidade
 	 */
 	public void inserirCidade(String cidadeJson) {
@@ -203,7 +211,7 @@ public class CidadeService {
 		mapper.registerModule(module);
 
 		Cidade novaCidade = null;
-		
+
 		try {
 			novaCidade = mapper.readValue(cidadeJson, Cidade.class);
 		} catch (IOException e) {
@@ -211,6 +219,19 @@ public class CidadeService {
 		}
 
 		listaCidades.add(novaCidade);
+	}
+
+	// TODO: Verificar path de eventos DELETE/PUT
+	@DELETE
+	@Path("/remover-cidade")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	/**
+	 * 
+	 * @param idIBGE código identificador da cidade
+	 */
+	public void removerCidade(String idIBGE) {
+		listaCidades.removeIf(c -> c.getIdIbge().equals(idIBGE));
 	}
 
 }
